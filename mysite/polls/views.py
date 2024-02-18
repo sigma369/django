@@ -1,9 +1,13 @@
 # from django.shortcuts import render
 
 # Create your views here.
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, Http404, HttpResponseRedirect
 from django.shortcuts import render, get_object_or_404
+from django.urls import reverse
+from django.db.models import F
+
 from .models import Question, Choice
+
 
 def index(request):
     question_qury_set = Question.objects.order_by('pub_date')[0:5]
@@ -30,11 +34,40 @@ def detail(request, question_id):
     #     return render(request, 'polls/detail.html', context)
 
 def results(request, question_id):
-    response = f'you are looking at the results of question {question_id}'
-    return HttpResponse(response)
+    question = get_object_or_404(Question, id=question_id)
+    context = {
+        'question':question,
+        'choices':Choice.objects.filter(question=question)
+    }
+    return render(request, 'polls/results.html', context)
+
+
+
 
 def vote(request, question_id):
-    return HttpResponse(f'you are voting on question {question_id}')
+    print(request.POST)
+    question = get_object_or_404(Question, id=question_id)
+    try:
+        selected_choice = Choice.objects.get(id=request.POST['choice'])
+    except (KeyError, Choice.DoesNotExist):
+        context = {
+            'question': question,
+            'choices': Choice.objects.filter(question=question),
+            'error_message': 'You didnot selected a choice!',
+
+        }
+        return render(request, 'polls/detail.html', context)
+    else:
+        selected_choice.votes = F('votes') + 1
+        selected_choice.save()
+        # selected_choice.votes += 1
+        # selected_choice.save()
+    
+        return HttpResponseRedirect(
+            reverse('polls:results', args=(question.id,)))
+
+def owner(request):
+    return HttpResponse("Hello, world. 8abd9143 is the polls index.")
 
 
 
